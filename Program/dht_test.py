@@ -1,8 +1,6 @@
-#from tkinter import *
-#from tkinter import messagebox
 import serial
 import time
-#import sqlite3
+
 
 board_com = dict()
 
@@ -47,7 +45,7 @@ def show_data(board_com):
 
 while True:
     print("\nProgram include data dht to python")
-    print("Version : 1.0\n")
+    print("Version : 1.0\nProgrammer : Basyair7\n ")
     print("1. Input data \n2. Tampilkan data\n3. Exit")
     select = input("Select : ")
 
