@@ -389,9 +389,13 @@ def exit():
     if ask == 'yes':
         quit()
 
+# About application
+def about_me():
+    messagebox._show("About Me", "Aplikasi Data Sensor DHT GUI\n\nVersion : v1.1\nProgrammer : Basyair7")
+
 #<----------------Main Menu-------------------->
 # Create hmoe app tkinter
-home = Tk(); home.geometry('350x480')
+home = Tk(); home.geometry('355x480')
 home.title("Aplikasi Data Sensor DHT")
 
 # Frame layout
@@ -415,18 +419,27 @@ id_port = Entry(frm_port, width=10)
 id_port.grid(row=1, column=4)
 
 # Button Menu
+# Button connect
 btn_connect = Button(frm_button, text="Connect", command=conn_device)
 btn_connect.grid(row=0, column=0, columnspan=2, padx=(10,0), pady=10, ipadx=23)
+# Button get data
 btn_getData = Button(frm_button, text="Ambil Data", command=getData)
 btn_getData.grid(row=1, column=0, columnspan=2, padx=(10,0), ipadx=17)
+# Button save data
 btn_save = Button(frm_button, text="Simpan Data", command=saveData)
 btn_save.grid(row=0, column=2, padx=30, ipadx=20)
+# Button delete
 btn_delete = Button(frm_button, text="Hapus Data", command=delete)
 btn_delete.grid(row=1, column=2, ipadx=23)
+# Button show data
 btn_show = Button(frm_button, text="Tampilkan Data", command=showData)
 btn_show.grid(row=2, column=0, padx=(10,0), pady=10, ipadx=6)
+# Button exit
 btn_exit = Button(frm_button, text="Keluar", command=exit)
 btn_exit.grid(row=2, column=2, ipadx=38)
+# Button about program
+btn_about = Button(home, text='About Me', command=about_me)
+btn_about.grid(row=3, column=0, padx=10, pady=8, ipadx=15)
 
 # Scroll Bar
 scroll_y = Scrollbar(frm_info, orient=VERTICAL)
