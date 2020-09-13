@@ -159,38 +159,38 @@ def showData():
             minutes = float(minutes)
             replay_num = int(replay_num)
             # Ask question yes or no
-            ask = messagebox.askquestion("Konfirmasi", f"Data akan ditampilkan {replay_num}x selama {minutes} menit\n\n\nNote : \n1.  Akan terjadi not responding saat data diproses, mohon jangan ditutup paksa.\n2. Semakin banyak pengulangan, semakin lama prosesnya (Tergantung pada menitnya).\n\nLanjutkan?")
+            ask = messagebox.askquestion("Konfirmasi", f"Data akan ditampilkan {replay_num}x selama {minutes} menit\n\n\nNote : \n1.  Akan terjadi not responding saat data diproses, mohon jangan ditutup paksa.\n2. Semakin banyak pengulangan, semakin lama prosesnya (Tergantung pada menitnya), Disarankan tidak lebih dari 30 menit.\n\nLanjutkan?")
             if ask == 'yes':
-                # Create a real date and time
-                now = datetime.datetime.now()
-                date = now.day
-                month = now.month
-                year = now.year
-                Time = (now.strftime("%H:%M:%S"))
-                date_time = f"{date}/{month}/{year} {Time}"
-                
                 # Open database
                 conn = sqlite3.connect("DHT_Data.db")
                 c = conn.cursor()
-
-                # connect to board
-                c.execute("SELECT *, oid FROM port_board")
-                device_port = c.fetchall()
-                print_port = ""
-                print_nameBoard = ""
-                for show in device_port:
-                    print_port += f"COM{show[0]}"
-                    print_nameBoard += f"{show[1]}"
-                
-                board = serial.Serial(print_port, 9600) # see in device manager or port in tool arduino
                 
                 for i in range(replay_num):
+                    # connect to board
+                    c.execute("SELECT *, oid FROM port_board")
+                    device_port = c.fetchall()
+                    print_port = ""
+                    print_nameBoard = ""
+                    for show in device_port:
+                        print_port += f"COM{show[0]}"
+                        print_nameBoard += f"{show[1]}"
+                    
+                    board = serial.Serial(print_port, 9600) # see in device manager or port in tool arduino
+
+                    # Create a real date and time
+                    now = datetime.datetime.now()
+                    date = now.day
+                    month = now.month
+                    year = now.year
+                    Time = (now.strftime("%H:%M:%S"))
+                    date_time = f"{date}/{month}/{year} {Time}"
+
                     # Get data
                     data_dht = board.readline()
                     decode_values = str(data_dht[0:len(data_dht)].decode("utf-8"))
-                    print(decode_values)
+                    print(f"\n{date_time} --> {print_nameBoard} ({print_port}) >> {decode_values}")
                     # Print data
-                    result_box.insert(END, f"\n{date_time} --> {print_nameBoard}({print_port})\t{decode_values}")
+                    result_box.insert(END, f"\n{date_time} --> {print_nameBoard} ({print_port}) >> {decode_values}")
                     # Save in database
                     c.execute("INSERT INTO dht_data VALUES (:id_dev, :name_board, :real_data, :date)",
                     {   'id_dev': print_port,
@@ -205,6 +205,9 @@ def showData():
                     for getdata in data:
                         list_data += f"\n{getdata[3]} --> {getdata[1]} ({getdata[0]}) >> {getdata[2]}"
                     
+                    # disconnected
+                    board.close()
+    
                     # Looping
                     proses_loop = minutes*60
                     proses_loop = float(proses_loop)
@@ -212,8 +215,6 @@ def showData():
 
                 messagebox.showinfo('Informasi', 'Selesai...')
 
-                # disconnected
-                board.close()
                 # Close database
                 conn.commit()
                 conn.close()
@@ -241,7 +242,7 @@ def showData():
     # Label
     lbl_replay = Label(frm_button2, text="Data diulang :\t\t")
     lbl_replay.grid(row=0, column=0, padx=5, pady=(10,0))
-    lbl_minute1 = Label(frm_button2, text="Per ")
+    lbl_minute1 = Label(frm_button2, text="X  Per ")
     lbl_minute1.grid(row=0, column=2, padx=10, pady=(10,0))
     lbl_minute2 = Label(frm_button2, text="\tMenit")
     lbl_minute2.grid(row=0, column=3, padx=10, pady=(10,0))
