@@ -50,7 +50,7 @@ void loop(){
 
   // Check if any reads failed and exit early (to try again).
   if (isnan(celcius) || isnan(humidity) || isnan(fahrenheit)){
-    Serial.print("Humidity: 0%");
+    Serial.print("Humidity: 0% ");
     Serial.println("Temperature: 0°C (0°F)");
     delay(2000);
     return 0;
