@@ -208,9 +208,9 @@ def showData():
                     # disconnected
                     board.close()
     
-                    # Looping
-                    proses_loop = float(proses_loop)    
+                    # Looping  
                     proses_loop = minutes*60
+                    proses_loop = float(proses_loop)
                     time.sleep(proses_loop)
 
                 messagebox.showinfo('Informasi', 'Selesai...')
