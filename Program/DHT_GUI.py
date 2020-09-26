@@ -4,6 +4,7 @@ from tkinter import filedialog
 import sqlite3
 import serial
 import datetime
+import threading
 import time
 
 # Create a database to store data
@@ -37,7 +38,7 @@ def conn_device():
         for row in c.fetchall():
             if int(row[0]) == int(id_device):
                 alright = 1
-        
+
         if alright == 0:
             if messagebox.askokcancel('Informasi', '1. Pastikan Serial Port benar-benar sudah dihapus\n2. Serial Port hanya terisi 1x sekali dan jika mau mengganti port lain harap hapus port terlebih dahulu\n\nLanjutkan?', icon='warning') == True:
                 id_device = id_port.get()
@@ -65,25 +66,25 @@ def conn_device():
                 print_connection = ""
                 for show in device_port:
                     print_connection += f"{show[1]} on COM{show[0]} ({show[2]})"
-                
+
                 # Show device in listbox
                 messagebox.showinfo('Informasi', f"{name_board} (COM{id_device}) sudah terhubung")
                 info_box.insert(END, " ", print_connection)
 
-        
+
         elif alright == 1:
             messagebox.showwarning('Informasi', 'Serial Port sudah ada')
-            
+
             # Show device in listbox
             c.execute("SELECT *, oid FROM port_board")
             device_port = c.fetchall()
             print_connection = ""
             for show in device_port:
                 print_connection += f"{show[1]} on COM{show[0]} ({show[2]})"
-            
+
             # Show device in listbox
             info_box.insert(END, " ", print_connection)
-        
+
     except:
         messagebox.showerror('Terjadi kesalahan', '1. Serial Port tidak boleh kosong!\n2. Isi angka saja')
         info_box.insert(END, " ","Terjadi kesalahan, Silahkan coba lagi...")
@@ -119,13 +120,13 @@ def getData():
         for show in device_port:
             print_port += f"COM{show[0]}"
             print_nameBoard += f"{show[1]}"
-        
+
         board = serial.Serial(print_port, 9600) # see in device manager or port in tool arduino
-        
+
         # Get data
         data_dht = board.readline()
         decode_values = str(data_dht[0:len(data_dht)].decode("utf-8"))
-        print(decode_values)
+        print(f"\n{date_time} --> {print_nameBoard} ({print_port}) >> {decode_values}")
         # Save in database
         c.execute("INSERT INTO dht_data VALUES (:id_dev, :name_board, :real_data, :date)",
         {   'id_dev': print_port,
@@ -143,7 +144,7 @@ def getData():
         # Close database
         conn.commit()
         conn.close()
-    
+
     except:
         messagebox.showerror("Terjadi kesalahan", "1. Pastikan Serial Port sudah diisi\n2. Pastikan Serial Port sama di arduino ide... \n3. Pastikan board sudah diupload program utamanya dan tidak terputus kabel datanya")
         info_box.insert(END," ","Terjadi kesalahan... Silahkan coba lagi")
@@ -159,12 +160,12 @@ def showData():
             minutes = float(minutes)
             replay_num = int(replay_num)
             # Ask question yes or no
-            ask = messagebox.askquestion("Konfirmasi", f"Data akan ditampilkan {replay_num}x selama {minutes} menit\n\n\nNote : \n1.  Akan terjadi not responding saat data diproses, mohon jangan ditutup paksa.\n2. Semakin banyak pengulangan, semakin lama prosesnya (Tergantung pada menitnya), Disarankan tidak lebih dari 30 menit.\n\nLanjutkan?")
+            ask = messagebox.askquestion("Konfirmasi", f"Data akan ditampilkan {replay_num}x selama {minutes} menit\n\n\nNote : \n1. Saat data diproses, mohon jangan ditutup\n2. Semakin banyak pengulangan, semakin lama prosesnya (Tergantung pada menitnya), Disarankan tidak lebih dari 30 menit.\n\nLanjutkan?")
             if ask == 'yes':
                 # Open database
                 conn = sqlite3.connect("DHT_Data.db")
                 c = conn.cursor()
-                
+
                 for i in range(replay_num):
                     # connect to board
                     c.execute("SELECT *, oid FROM port_board")
@@ -174,7 +175,7 @@ def showData():
                     for show in device_port:
                         print_port += f"COM{show[0]}"
                         print_nameBoard += f"{show[1]}"
-                    
+
                     board = serial.Serial(print_port, 9600) # see in device manager or port in tool arduino
 
                     # Create a real date and time
@@ -204,11 +205,11 @@ def showData():
                     list_data = ""
                     for getdata in data:
                         list_data += f"\n{getdata[3]} --> {getdata[1]} ({getdata[0]}) >> {getdata[2]}"
-                    
+
                     # disconnected
                     board.close()
-    
-                    # Looping  
+
+                    # Looping
                     proses_loop = minutes*60
                     proses_loop = float(proses_loop)
                     time.sleep(proses_loop)
@@ -218,9 +219,9 @@ def showData():
                 # Close database
                 conn.commit()
                 conn.close()
-        
+
         except:
-            messagebox.showerror("Terjadi kesalahan", "1. Pastikan board sudah connect\n2. Isi data diulang, hanya angka saja (*ex : 5 = 5x perulangan)")
+            messagebox.showerror("Terjadi kesalahan", "1. Pastikan board sudah connect\n2. Isi data diulang, hanya angka saja (*ex : 5 1 = 5x perulangan per 1 menit)\n3. Jangan tutup layar saat proses pengambilan data...")
             info_box.insert(END," ","Terjadi kesalahan... Silahkan coba lagi")
 
         # Clear input box
@@ -232,13 +233,13 @@ def showData():
     home_showData = Tk()
     home_showData.title('Tampilkan Data')
     home_showData.geometry('890x540')
-    
+
     # Frame
     frm_showData = Frame(home_showData, relief=RIDGE, borderwidth=5)
     frm_showData.grid(row=0, column=0, padx=(10,0), pady=12)
     frm_button2 = Frame(home_showData, relief=RIDGE, borderwidth=5)
     frm_button2.grid(row=1, column=0)
-    
+
     # Label
     lbl_replay = Label(frm_button2, text="Data diulang :\t\t")
     lbl_replay.grid(row=0, column=0, padx=5, pady=(10,0))
@@ -263,7 +264,7 @@ def showData():
     scrolltxt_y.config(command=result_box.yview)
 
     # Button
-    btn_replay = Button(frm_button2, text='OK', command=replay)
+    btn_replay = Button(frm_button2, text='OK', command=threading.Thread(target=replay).start)
     btn_replay.grid(row=2, column=1, padx=10, pady=12, ipadx=10)
 
     # Open Database
@@ -275,7 +276,7 @@ def showData():
     list_data = ""
     for getdata in data:
         list_data += f"\n{getdata[3]} --> {getdata[1]} ({getdata[0]}) >> {getdata[2]}"
-    
+
     # Print data
     result_box.insert(END, list_data)
 
@@ -300,7 +301,7 @@ def delete():
                     id_dev INTEGER PRIMARY KEY,
                     name_board TEXT,
                     date TEXT)""")
-            
+
             # Close database
             conn.commit()
             conn.close()
@@ -329,12 +330,12 @@ def delete():
             # Close database
             conn.commit()
             conn.close()
-            
+
             # Show messagebox
             if messagebox.askyesno('Informasi', 'Data sensor sudah dihapus\n\nKembali ke menu?') == True:
                 home_del.destroy()
                 info_box.insert(END, " ","***Data sensor sudah dihapus***")
-    
+
     global home_del
     home_del = Tk()
     home_del.title("Hapus Data"); home_del.geometry('250x128')
@@ -365,12 +366,12 @@ def saveData():
     # get data
     for getdata in records:
         print_connection += f"{getdata[3]} --> {getdata[1]} ({getdata[0]}) >> {getdata[2]}"
-    
+
     # Create name for txt
     f = filedialog.asksaveasfile(mode='w', defaultextension='.txt')
     if f is None:
         return
-    
+
     # Save data in txt
     f.write(print_connection)
     f.close()
