@@ -1,11 +1,14 @@
 from tkinter import *
 from tkinter import messagebox
 from tkinter import filedialog
+from threading import *
+from time import sleep
 import sqlite3
 import serial
 import datetime
-import threading
-import time
+
+# Lock threading
+lock = Lock()
 
 # Create a database to store data
 conn = sqlite3.connect("DHT_Data.db")
@@ -22,6 +25,10 @@ c.execute("""CREATE TABLE IF NOT EXISTS dht_data(
             name_board TEXT,
             real_data TEXT,
             date TEXT)""")
+
+c.execute("""CREATE TABLE IF NOT EXISTS replay_data(
+            replay INTEGER,
+            times REAL)""")
 
 # Input port arduino in database
 def conn_device():
@@ -153,139 +160,174 @@ def getData():
 
 # Show data
 def showData():
-    def replay():
-        try:
-            replay_num = id_replay.get()
-            minutes = id_minute.get()
-            minutes = float(minutes)
-            replay_num = int(replay_num)
-            # Ask question yes or no
-            ask = messagebox.askquestion("Konfirmasi", f"Data akan ditampilkan {replay_num}x selama {minutes} menit\n\n\nNote : \n1. Saat data diproses, mohon jangan ditutup\n2. Semakin banyak pengulangan, semakin lama prosesnya (Tergantung pada menitnya), Disarankan tidak lebih dari 30 menit.\n\nLanjutkan?")
-            if ask == 'yes':
+        def replay():
+            lock.acquire()
+            try:
                 # Open database
                 conn = sqlite3.connect("DHT_Data.db")
                 c = conn.cursor()
 
-                for i in range(replay_num):
-                    # connect to board
-                    c.execute("SELECT *, oid FROM port_board")
-                    device_port = c.fetchall()
-                    print_port = ""
-                    print_nameBoard = ""
-                    for show in device_port:
-                        print_port += f"COM{show[0]}"
-                        print_nameBoard += f"{show[1]}"
+                # Get data
+                replay_num = id_replay.get()
+                minutes = id_minute.get()
+                minutes = float(minutes)
+                replay_num = int(replay_num)
 
-                    board = serial.Serial(print_port, 9600) # see in device manager or port in tool arduino
+                # Input
+                c.execute("INSERT INTO replay_data VALUES (:replay, :times)",{
+                    'replay':replay_num,
+                    'times':minutes
+                })
 
-                    # Create a real date and time
-                    now = datetime.datetime.now()
-                    date = now.day
-                    month = now.month
-                    year = now.year
-                    Time = (now.strftime("%H:%M:%S"))
-                    date_time = f"{date}/{month}/{year} {Time}"
+                # Ask question yes or no
+                ask = messagebox.askquestion("Konfirmasi", f"Data akan ditampilkan {replay_num}x selama {minutes} menit\n\n\nNote : \n1. Saat data diproses, mohon jangan ditutup\n2. Semakin banyak pengulangan, semakin lama prosesnya (Tergantung pada menitnya), Disarankan tidak lebih dari 30 menit/tidak lebih dari 500x pengulangan.\n\nLanjutkan?")
+                if ask == 'yes':
+                    c.execute("SELECT *, oid FROM replay_data")
+                    data_replay = c.fetchall()
+                    print_replay = ""
+                    print_times = ""
+                    for row in data_replay:
+                        print_replay += f"{row[0]}"
+                        print_times += f"{row[1]}"
+                    
+                    print_replay = int(print_replay)
+                    print_times = float(print_times)
+                    
+                    # celar entry box
+                    id_replay.delete(0,END); id_minute.delete(0,END)
 
-                    # Get data
-                    data_dht = board.readline()
-                    decode_values = str(data_dht[0:len(data_dht)].decode("utf-8"))
-                    print(f"\n{date_time} --> {print_nameBoard} ({print_port}) >> {decode_values}")
-                    # Print data
-                    result_box.insert(END, f"\n{date_time} --> {print_nameBoard} ({print_port}) >> {decode_values}")
-                    # Save in database
-                    c.execute("INSERT INTO dht_data VALUES (:id_dev, :name_board, :real_data, :date)",
-                    {   'id_dev': print_port,
-                        'name_board': print_nameBoard,
-                        'real_data': decode_values,
-                        'date': date_time
-                    })
+                    for i in range(print_replay):
+                        # connect to board
+                        c.execute("SELECT *, oid FROM port_board")
+                        device_port = c.fetchall()
+                        print_port = ""
+                        print_nameBoard = ""
+                        for show in device_port:
+                            print_port += f"COM{show[0]}"
+                            print_nameBoard += f"{show[1]}"
 
-                    c.execute("SELECT *, oid FROM dht_data")
-                    data = c.fetchall()
-                    list_data = ""
-                    for getdata in data:
-                        list_data += f"\n{getdata[3]} --> {getdata[1]} ({getdata[0]}) >> {getdata[2]}"
+                        board = serial.Serial(print_port, 9600) # see in device manager or port in tool arduino
 
-                    # disconnected
-                    board.close()
+                        # Create a real date and time
+                        now = datetime.datetime.now()
+                        date = now.day
+                        month = now.month
+                        year = now.year
+                        Time = (now.strftime("%H:%M:%S"))
+                        date_time = f"{date}/{month}/{year} {Time}"
 
-                    # Looping
-                    proses_loop = minutes*60
-                    proses_loop = float(proses_loop)
-                    time.sleep(proses_loop)
+                        # Get data
+                        data_dht = board.readline()
+                        decode_values = str(data_dht[0:len(data_dht)].decode("utf-8"))
+                        print(f"\n{date_time} --> {print_nameBoard} ({print_port}) >> {decode_values}")
+                        # Print data
+                        result_box.insert(END, f"\n{date_time} --> {print_nameBoard} ({print_port}) >> {decode_values}")
+                        # Save in database
+                        c.execute("INSERT INTO dht_data VALUES (:id_dev, :name_board, :real_data, :date)",
+                        {   'id_dev': print_port,
+                            'name_board': print_nameBoard,
+                            'real_data': decode_values,
+                            'date': date_time
+                        })
 
-                messagebox.showinfo('Informasi', 'Selesai...')
+                        c.execute("SELECT *, oid FROM dht_data")
+                        data = c.fetchall()
+                        list_data = ""
+                        for getdata in data:
+                            list_data += f"\n{getdata[3]} --> {getdata[1]} ({getdata[0]}) >> {getdata[2]}"
 
-                # Close database
-                conn.commit()
-                conn.close()
+                        # disconnected
+                        board.close()
 
-        except:
-            messagebox.showerror("Terjadi kesalahan", "1. Pastikan board sudah connect\n2. Isi data diulang, hanya angka saja (*ex : 5 1 = 5x perulangan per 1 menit)\n3. Jangan tutup layar saat proses pengambilan data...")
-            info_box.insert(END," ","Terjadi kesalahan... Silahkan coba lagi")
+                        # Looping
+                        proses_loop = print_times*60
+                        proses_loop = float(proses_loop)
+                        sleep(proses_loop)
 
-        # Clear input box
-        id_replay.delete(0, END)
-        id_minute.delete(0, END)
+                    else:
+                        c.execute("DROP TABLE IF EXISTS replay_data;")
+                        c.execute("""CREATE TABLE IF NOT EXISTS replay_data(
+                                    replay INTEGER,
+                                    times REAL)""")
 
-    # Create tkinter home showData
-    global home_showData
-    home_showData = Tk()
-    home_showData.title('Tampilkan Data')
-    home_showData.geometry('890x540')
+                    messagebox.showinfo('Informasi', 'Selesai...')
+                    c.execute("DROP TABLE IF EXISTS replay_data;")
+                    c.execute("""CREATE TABLE IF NOT EXISTS replay_data(
+                                replay INTEGER,
+                                times REAL)""")
 
-    # Frame
-    frm_showData = Frame(home_showData, relief=RIDGE, borderwidth=5)
-    frm_showData.grid(row=0, column=0, padx=(10,0), pady=12)
-    frm_button2 = Frame(home_showData, relief=RIDGE, borderwidth=5)
-    frm_button2.grid(row=1, column=0)
+                    # Close database
+                    conn.commit()
+                    conn.close()
+            
+            except:
+                messagebox.showerror("Terjadi kesalahan", "1. Pastikan board sudah connect\n2. Isi data diulang, hanya angka saja (*ex : 5 1 = 5x perulangan per 1 menit)\n3. Jangan tutup layar saat proses pengambilan data...")
+                info_box.insert(END," ","Terjadi kesalahan... Silahkan coba lagi")
 
-    # Label
-    lbl_replay = Label(frm_button2, text="Data diulang :\t\t")
-    lbl_replay.grid(row=0, column=0, padx=5, pady=(10,0))
-    lbl_minute1 = Label(frm_button2, text="X  Per ")
-    lbl_minute1.grid(row=0, column=2, padx=10, pady=(10,0))
-    lbl_minute2 = Label(frm_button2, text="\tMenit")
-    lbl_minute2.grid(row=0, column=3, padx=10, pady=(10,0))
+            # Clear input box
+            id_replay.delete(0, END)
+            id_minute.delete(0, END)
 
-    # Input box
-    id_replay = Entry(frm_button2, width=10)
-    id_replay.grid(row=0, column=0, columnspan=5, padx=5, pady=(10,0))
-    id_minute = Entry(frm_button2, width=10)
-    id_minute.grid(row=0, column=2, columnspan=20, padx=10, pady=(10,0))
+            lock.release()
 
-    # Scrollbar
-    scrolltxt_y = Scrollbar(frm_showData, orient=VERTICAL)
-    scrolltxt_y.grid(row=1, column=1, columnspan=1, ipady=170)
+        # Create tkinter home showData
+        global home_showData
+        home_showData = Tk()
+        home_showData.title('Tampilkan Data')
+        home_showData.geometry('890x540')
 
-    # Result box
-    result_box = Text(frm_showData, yscrollcommand=scrolltxt_y.set)
-    result_box.grid(row=1, column=0, ipadx=100, ipady=2)
-    scrolltxt_y.config(command=result_box.yview)
+        # Frame
+        frm_showData = Frame(home_showData, relief=RIDGE, borderwidth=5)
+        frm_showData.grid(row=0, column=0, padx=(10,0), pady=12)
+        frm_button2 = Frame(home_showData, relief=RIDGE, borderwidth=5)
+        frm_button2.grid(row=1, column=0)
 
-    # Button
-    btn_replay = Button(frm_button2, text='OK', command=threading.Thread(target=replay).start)
-    btn_replay.grid(row=2, column=1, padx=10, pady=12, ipadx=10)
+        # Label
+        lbl_replay = Label(frm_button2, text="Data diulang :\t\t")
+        lbl_replay.grid(row=0, column=0, padx=5, pady=(10,0))
+        lbl_minute1 = Label(frm_button2, text="X  Per ")
+        lbl_minute1.grid(row=0, column=2, padx=10, pady=(10,0))
+        lbl_minute2 = Label(frm_button2, text="\tMenit")
+        lbl_minute2.grid(row=0, column=3, padx=10, pady=(10,0))
 
-    # Open Database
-    conn = sqlite3.connect("DHT_Data.db")
-    c = conn.cursor()
-    # Get data
-    c.execute("SELECT *, oid FROM dht_data")
-    data = c.fetchall()
-    list_data = ""
-    for getdata in data:
-        list_data += f"\n{getdata[3]} --> {getdata[1]} ({getdata[0]}) >> {getdata[2]}"
+        # Input box
+        id_replay = Entry(frm_button2, width=10)
+        id_replay.grid(row=0, column=0, columnspan=5, padx=5, pady=(10,0))
+        id_minute = Entry(frm_button2, width=10)
+        id_minute.grid(row=0, column=2, columnspan=20, padx=10, pady=(10,0))
 
-    # Print data
-    result_box.insert(END, list_data)
+        # Scrollbar
+        scrolltxt_y = Scrollbar(frm_showData, orient=VERTICAL)
+        scrolltxt_y.grid(row=1, column=1, columnspan=1, ipady=170)
 
-    # Close database
-    conn.commit()
-    conn.close()
+        # Result box
+        result_box = Text(frm_showData, yscrollcommand=scrolltxt_y.set)
+        result_box.grid(row=1, column=0, ipadx=100, ipady=2)
+        scrolltxt_y.config(command=result_box.yview)
 
-    # Mainloop
-    home_showData.mainloop()
+        # Button
+        btn_replay = Button(frm_button2, text='OK', command=Thread(target=replay).start)
+        btn_replay.grid(row=2, column=1, padx=10, pady=12, ipadx=10)
+
+        # Open Database
+        conn = sqlite3.connect("DHT_Data.db")
+        c = conn.cursor()
+        # Get data
+        c.execute("SELECT *, oid FROM dht_data")
+        data = c.fetchall()
+        list_data = ""
+        for getdata in data:
+            list_data += f"\n{getdata[3]} --> {getdata[1]} ({getdata[0]}) >> {getdata[2]}"
+
+        # Print data
+        result_box.insert(END, list_data)
+
+        # Close database
+        conn.commit()
+        conn.close()
+
+        # Mainloop
+        home_showData.mainloop()
 
 # Delete data in database
 def delete():
