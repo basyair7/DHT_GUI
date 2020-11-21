@@ -18,7 +18,7 @@ Aplikasi python untuk arduino ide
 3. Pastikan mempunyai text editor (seperti atom, vs code, dan lain-lain)
 4. Include library sensor dht
 5. Install library python (datetime dan serial)
-* cara install library python :
-  python -m pip install datetime
+* python -m pip install serial
+* python -m pip install datetime
   
  Project @2020
