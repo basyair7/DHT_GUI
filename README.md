@@ -21,5 +21,7 @@ Aplikasi python untuk arduino ide
 * python -m pip install pyserial
 * python -m pip install serial
 * python -m pip install datetime
+
+Atau : python -m pip install -r lib.txt
   
  Project @2020
