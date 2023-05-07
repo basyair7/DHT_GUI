@@ -19,7 +19,6 @@ Aplikasi python untuk arduino ide
 4. Include library sensor dht
 5. Install library python (datetime dan serial)
 * python -m pip install pyserial
-* python -m pip install serial
 * python -m pip install datetime
 
 Atau : python -m pip install -r lib.txt
